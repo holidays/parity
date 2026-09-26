@@ -9,14 +9,43 @@ reference: when two disagree, the difference is reported as a difference, and
 which side is wrong is decided case by case. Every difference must be stated in
 the results. Nothing is skipped, allowlisted, or explained away silently.
 
-This repo is deliberately separate from the implementations. Its checks are
-non-blocking for them: a red run here is a signal to go fix something, not a
-gate on a PR in `holidays` or `go-holidays`.
+This repo is deliberately separate from the implementations. Its checks never
+gate a PR in `holidays` or `go-holidays`: a red run here is a signal to go fix
+something.
 
-| Implementation | Repo | Version under test |
-|----------------|------|--------------------|
-| Ruby | [holidays/holidays](https://github.com/holidays/holidays) | pinned in `ruby/Gemfile` |
-| Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | pinned in `go/go.mod` |
+| Implementation | Repo | Pinned version | Tracked branch |
+|----------------|------|----------------|----------------|
+| Ruby | [holidays/holidays](https://github.com/holidays/holidays) | `ruby/Gemfile` | `master` |
+| Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | `go/go.mod` | `main` |
+
+## Three checks
+
+The same suite runs three times, against three different reference points that
+never move backwards relative to each other: `pinned <= latest release <= main
+tip`.
+
+| Check | Versions | Blocking? |
+|-------|----------|-----------|
+| `parity (pinned)` | the pins in this repo | Yes. Make it a required status check. If the pinned versions disagree, that has to be fixed. |
+| `parity (latest release, non-blocking)` | the newest published release of go-holidays and of the gem, resolved fresh each run | No. Never make it required. A red run means a release has already shipped that breaks parity: the pin needs bumping, or the new release needs fixing. |
+| `parity (main, non-blocking)` | tip of go-holidays `main` and the gem's `master` | No. Never make it required. A red run is an early warning that unreleased work would break parity before it ever ships. |
+
+`pinned` and `latest release` can coincide (nothing has shipped past the pin
+yet), and `latest release` and `main` can coincide (the default branch has no
+commits past its latest tag). Don't read a repeat result across checks as the
+checks being redundant: they answer different questions and will diverge the
+moment a release ships, or a commit lands, without a pin catching up.
+
+Both non-blocking checks also run nightly, to catch drift that lands in either
+repo while nothing here changes. All three print the exact versions they
+tested.
+
+For `latest release` and `main`, `definitions/` is checked out at whatever
+commit that go-holidays version pins (see the data note below), so the two
+sides still resolve the same rules. `scripts/use-latest-release.sh` and
+`scripts/use-main.sh` do the switching. Bumping a pin (go-holidays in
+`go/go.mod`, the gem in `ruby/Gemfile`, or `definitions/`) is how a new release
+becomes the blocking baseline.
 
 ## Layout
 
@@ -72,8 +101,14 @@ go/ (Go harness)  --NDJSON request-->  ruby/oracle.rb  (pinned gem + our region 
 ## Running
 
 ```
-make parity
+make parity          # the pinned versions (the blocking check)
+make parity-latest   # latest published release of each (non-blocking)
+make parity-main     # go-holidays main + gem master (non-blocking)
 ```
+
+`make parity-latest` and `make parity-main` both work in a temporary copy of
+the tree, so your `go/go.mod` and `definitions/` checkout are left alone. Both
+need an authenticated `gh`.
 
 **Prerequisites:**
 - Go (see `go/go.mod`).
@@ -125,4 +160,11 @@ Go's `NextHolidays` instead expands year by year until it has `count` holidays,
 so it includes `Tag der Arbeit 2025`. The two disagree, which is a parity
 failure that has to be resolved in one implementation or the other. The case is
 asserted in `go/parity_test.go`, so the `NextHolidays` spec fails on every run
-until it is resolved.
+against the pinned gem 11.6.0.
+
+This is tracked in [holidays/holidays#513](https://github.com/holidays/holidays/issues/513)
+and fixed in the gem's `master` (holidays/holidays#514), so `parity (main,
+non-blocking)` passes. The fix has not shipped in a release yet, so `parity
+(latest release, non-blocking)` still fails alongside `parity (pinned)`.
+Both go green once a gem release containing the fix ships and, for the
+blocking check, the pin moves to it; this section should then be deleted.

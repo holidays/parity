@@ -1,0 +1,50 @@
+name: Parity (latest release)
+
+# The non-blocking early warning for released-but-unpinned drift. Runs the
+# latest published release of each implementation (not main tip, and not
+# whatever this repo currently pins), with definitions at whatever commit that
+# go-holidays release pins (see scripts/use-latest-release.sh). Do NOT make
+# this a required status check: a red run here means a release has already
+# shipped that breaks parity, which needs a pin bump or a fix, but it must
+# never gate a PR. The nightly schedule catches a release landing while
+# nothing here changes.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latest:
+    name: parity (latest release, non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      # No bundler-cache: the gem tracks whatever is currently published, so
+      # use-latest-release.sh runs `bundle install` itself against
+      # ruby/Gemfile.latest on every run.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+      - name: make parity-latest (latest go-holidays release vs latest holidays release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make parity-latest
+      - name: Warn that a shipped release has drifted
+        if: failure()
+        run: >-
+          echo "::warning title=Parity against latest release::A published
+          release of go-holidays or holidays disagrees with the other. Not
+          blocking. See the make parity-latest step for the mismatches and the
+          versions tested."
