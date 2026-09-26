@@ -1,5 +1,9 @@
-name: Parity
+name: Parity (pinned)
 
+# The blocking check. Runs the versions pinned in this repo (go/go.mod,
+# ruby/Gemfile.lock, and the definitions/ submodule). If this fails, the pinned
+# implementations disagree and that has to be fixed. Make "parity (pinned)" a
+# required status check in branch protection.
 on:
   pull_request:
   push:
@@ -10,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  parity:
-    name: parity (corpus + exhaustive sweep)
+  pinned:
+    name: parity (pinned)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

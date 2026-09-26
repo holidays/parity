@@ -3,3 +3,9 @@
 
 # Output of the go coverage tool
 *.out
+
+# Resolved fresh on every run of the "main" check
+ruby/Gemfile.main.lock
+
+# Resolved fresh on every run of the "latest release" check
+ruby/Gemfile.latest.lock
