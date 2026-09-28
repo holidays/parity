@@ -1,0 +1,38 @@
+name: Parity (pinned)
+
+# The blocking check. Runs the versions pinned in this repo (go/go.mod,
+# ruby/Gemfile.lock, and the definitions/ submodule). If this fails, the pinned
+# implementations disagree and that has to be fixed. Make "parity (pinned)" a
+# required status check in branch protection.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned:
+    name: parity (pinned)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: ruby
+      # Runs the curated corpus plus the full 1970-2050 exhaustive sweep of the
+      # Go port (version pinned in go/go.mod) against the holidays gem pinned by
+      # ruby/Gemfile.lock. The -timeout=20m (in the Makefile) covers shared
+      # runners being slower than a local box.
+      - name: make parity (Ruby oracle vs Go, full sweep)
+        run: make parity

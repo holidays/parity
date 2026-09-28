@@ -1,0 +1,46 @@
+name: Parity (main)
+
+# The non-blocking early warning. Runs go-holidays main against the gem's
+# master, with definitions at whatever commit go-holidays main pins (see
+# scripts/use-main.sh). Do NOT make this a required status check: a red run
+# here means an upcoming release would break parity, which is worth knowing
+# before it ships, but it must never gate a PR. The nightly schedule catches
+# drift that lands in either repo while nothing here changes.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  main:
+    name: parity (main, non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      # No bundler-cache: the gem tracks a moving branch, so use-main.sh runs
+      # `bundle install` itself against ruby/Gemfile.main on every run.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+      - name: make parity-main (go-holidays main vs holidays master)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make parity-main
+      - name: Warn that main has drifted
+        if: failure()
+        run: >-
+          echo "::warning title=Parity against main::go-holidays main and
+          holidays master disagree. Not blocking. See the make parity-main step
+          for the mismatches and the versions tested."
