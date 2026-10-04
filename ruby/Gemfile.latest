@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+# Tracks whatever is currently published on rubygems.org for the non-blocking
+# "latest release" parity check (see scripts/use-latest-release.sh).
+# Deliberately unpinned and lockfile-free here: use-latest-release.sh pins it to
+# the release scripts/resolve-versions.sh picked, in a temporary copy. The
+# blocking check uses ruby/Gemfile; the branch-tip check uses ruby/Gemfile.main.
+source "https://rubygems.org"
+
+gem "holidays"
