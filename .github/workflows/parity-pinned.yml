@@ -1,9 +1,10 @@
-name: Parity (pinned)
+name: "Parity: pinned versions"
 
 # The blocking check. Runs the versions pinned in this repo (go/go.mod,
 # ruby/Gemfile.lock, and the definitions/ submodule). If this fails, the pinned
-# implementations disagree and that has to be fixed. Make "parity (pinned)" a
-# required status check in branch protection.
+# implementations disagree and that has to be fixed. The job name carries the
+# pinned versions, so if it is a required status check in branch protection,
+# update the required name whenever a pin is bumped.
 on:
   pull_request:
   push:
@@ -14,8 +15,26 @@ permissions:
   contents: read
 
 jobs:
+  versions:
+    name: Resolve versions
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.resolve.outputs.go }}
+      go_ref: ${{ steps.resolve.outputs.go_ref }}
+      ruby: ${{ steps.resolve.outputs.ruby }}
+      ruby_ref: ${{ steps.resolve.outputs.ruby_ref }}
+      defs: ${{ steps.resolve.outputs.defs }}
+      defs_sha: ${{ steps.resolve.outputs.defs_sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/resolve-versions.sh pinned
+
   pinned:
-    name: parity (pinned)
+    name: "Pinned (blocking): Go go-holidays ${{ needs.versions.outputs.go }} = Ruby holidays ${{ needs.versions.outputs.ruby }}, definitions ${{ needs.versions.outputs.defs }}"
+    needs: versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -34,5 +53,5 @@ jobs:
       # Go port (version pinned in go/go.mod) against the holidays gem pinned by
       # ruby/Gemfile.lock. The -timeout=20m (in the Makefile) covers shared
       # runners being slower than a local box.
-      - name: make parity (Ruby oracle vs Go, full sweep)
+      - name: Compare Go and Ruby output (curated cases plus 1970-2050 sweep of every region)
         run: make parity

@@ -1,4 +1,4 @@
-name: Parity (main)
+name: "Parity: unreleased main branches"
 
 # The non-blocking early warning. Runs go-holidays main against the gem's
 # master, with definitions at whatever commit go-holidays main pins (see
@@ -18,8 +18,26 @@ permissions:
   contents: read
 
 jobs:
+  versions:
+    name: Resolve versions
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.resolve.outputs.go }}
+      go_ref: ${{ steps.resolve.outputs.go_ref }}
+      ruby: ${{ steps.resolve.outputs.ruby }}
+      ruby_ref: ${{ steps.resolve.outputs.ruby_ref }}
+      defs: ${{ steps.resolve.outputs.defs }}
+      defs_sha: ${{ steps.resolve.outputs.defs_sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/resolve-versions.sh main
+
   main:
-    name: parity (main, non-blocking)
+    name: "Unreleased (non-blocking): Go go-holidays ${{ needs.versions.outputs.go }} = Ruby holidays ${{ needs.versions.outputs.ruby }}, definitions ${{ needs.versions.outputs.defs }}"
+    needs: versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -29,18 +47,24 @@ jobs:
         with:
           go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
-      # No bundler-cache: the gem tracks a moving branch, so use-main.sh runs
-      # `bundle install` itself against ruby/Gemfile.main on every run.
+      # No bundler-cache: use-main.sh runs `bundle install` itself against
+      # ruby/Gemfile.main, pinned to the commit the versions job resolved.
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-      - name: make parity-main (go-holidays main vs holidays master)
+      - name: Compare Go and Ruby output (curated cases plus 1970-2050 sweep of every region)
         env:
           GH_TOKEN: ${{ github.token }}
+          PARITY_GO: ${{ needs.versions.outputs.go }}
+          PARITY_GO_REF: ${{ needs.versions.outputs.go_ref }}
+          PARITY_RUBY: ${{ needs.versions.outputs.ruby }}
+          PARITY_RUBY_REF: ${{ needs.versions.outputs.ruby_ref }}
+          PARITY_DEFS: ${{ needs.versions.outputs.defs }}
+          PARITY_DEFS_SHA: ${{ needs.versions.outputs.defs_sha }}
         run: make parity-main
       - name: Warn that main has drifted
         if: failure()
         run: >-
           echo "::warning title=Parity against main::go-holidays main and
-          holidays master disagree. Not blocking. See the make parity-main step
-          for the mismatches and the versions tested."
+          holidays master disagree. Not blocking. See the compare step for the
+          mismatches and the versions tested."

@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # Tracks the tip of the gem's default branch for the non-blocking "main" parity
-# check (see scripts/use-main.sh). Deliberately has no lockfile: bundler
-# resolves the current tip each run. The blocking check uses ruby/Gemfile.
+# check. Deliberately has no lockfile: scripts/use-main.sh pins it to the commit
+# scripts/resolve-versions.sh picked, in a temporary copy. The blocking check
+# uses ruby/Gemfile.
 source "https://rubygems.org"
 
 gem "holidays", git: "https://github.com/holidays/holidays.git", branch: "master"
