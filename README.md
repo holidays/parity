@@ -144,27 +144,3 @@ variant that matches the gem's semantics), not `YearHolidays(year)`.
 The gem's `load_all` eagerly loads every region at runtime. The Go port already
 loads all regions eagerly via `init()` side effects, so `load_all` would be a
 no-op with nothing to compare.
-
-## Known open mismatches
-
-### `next_holidays` for `de` from 2024-03-01
-
-The gem's `next_holidays` windows its search through a `dates_driver` that
-buckets each holiday by its *source month* (function/variable holidays such as
-Easter offsets live in "month 0") and only reaches out to `from >> 12`. For this
-case the 2025 bucket ends at month 4, so the gem **drops** the fixed-date
-`Tag der Arbeit` (2025-05-01, month 5) while still **keeping** the Easter-based
-`Christi Himmelfahrt` (2025-05-29, month 0) it computes for that year.
-
-Go's `NextHolidays` instead expands year by year until it has `count` holidays,
-so it includes `Tag der Arbeit 2025`. The two disagree, which is a parity
-failure that has to be resolved in one implementation or the other. The case is
-asserted in `go/parity_test.go`, so the `NextHolidays` spec fails on every run
-against the pinned gem 11.6.0.
-
-This is tracked in [holidays/holidays#513](https://github.com/holidays/holidays/issues/513)
-and fixed in the gem's `master` (holidays/holidays#514), so `parity (main,
-non-blocking)` passes. The fix has not shipped in a release yet, so `parity
-(latest release, non-blocking)` still fails alongside `parity (pinned)`.
-Both go green once a gem release containing the fix ships and, for the
-blocking check, the pin moves to it; this section should then be deleted.
