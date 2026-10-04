@@ -19,10 +19,10 @@ something.
 | Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | v1.1.0 (`go/go.mod`) | `main` |
 | Data | [holidays/definitions](https://github.com/holidays/definitions) | v9.2.0 (`definitions/` submodule) | whatever go-holidays pins |
 
-The pinned versions are the ones `parity (pinned)` tests. Keep them in step:
-`definitions/` must be the commit the pinned go-holidays release pins, and the
-gem should be the release that ships the same definitions version. When you
-bump a pin, update this table too.
+The pinned versions are the ones the blocking `Pinned` job tests. Keep them in
+step: `definitions/` must be the commit the pinned go-holidays release pins,
+and the gem should be the release that ships the same definitions version.
+When you bump a pin, update this table too.
 
 ## Three checks
 
@@ -30,11 +30,23 @@ The same suite runs three times, against three different reference points that
 never move backwards relative to each other: `pinned <= latest release <= main
 tip`.
 
-| Check | Versions | Blocking? |
+| Check (job name in CI) | Versions | Blocking? |
 |-------|----------|-----------|
-| `parity (pinned)` | the pins in this repo | Yes. Make it a required status check. If the pinned versions disagree, that has to be fixed. |
-| `parity (latest release, non-blocking)` | the newest published release of go-holidays and of the gem, resolved fresh each run | No. Never make it required. A red run means a release has already shipped that breaks parity: the pin needs bumping, or the new release needs fixing. |
-| `parity (main, non-blocking)` | tip of go-holidays `main` and the gem's `master` | No. Never make it required. A red run is an early warning that unreleased work would break parity before it ever ships. |
+| `Pinned (blocking): Go go-holidays <v> = Ruby holidays <v>, definitions <v>` | the pins in this repo | Yes. If the pinned versions disagree, that has to be fixed. |
+| `Latest releases (non-blocking): Go go-holidays <v> = Ruby holidays <v>, definitions <v>` | the newest published release of go-holidays and of the gem, resolved fresh each run | No. Never make it required. A red run means a release has already shipped that breaks parity: the pin needs bumping, or the new release needs fixing. |
+| `Unreleased (non-blocking): Go go-holidays main@<sha> = Ruby holidays master@<sha>, definitions <v>` | tip of go-holidays `main` and the gem's `master` | No. Never make it required. A red run is an early warning that unreleased work would break parity before it ever ships. |
+
+Each job name spells out exactly which versions it compared, and `=` means the
+two gave identical output for every call in the suite. A first `Resolve
+versions` job in each workflow works the versions out with
+`scripts/resolve-versions.sh`, and the comparison job then tests exactly those
+versions, so the name can never claim something the run did not test. Because
+the pinned job's name includes the versions, a branch-protection rule that
+requires it has to be updated whenever a pin is bumped.
+
+The comparison has no separate pass or fail per language: neither
+implementation is the reference, so a red job means Go and Ruby disagree, and
+the job log lists every difference.
 
 `pinned` and `latest release` can coincide (nothing has shipped past the pin
 yet), and `latest release` and `main` can coincide (the default branch has no
@@ -43,8 +55,7 @@ checks being redundant: they answer different questions and will diverge the
 moment a release ships, or a commit lands, without a pin catching up.
 
 Both non-blocking checks also run nightly, to catch drift that lands in either
-repo while nothing here changes. All three print the exact versions they
-tested.
+repo while nothing here changes.
 
 For `latest release` and `main`, `definitions/` is checked out at whatever
 commit that go-holidays version pins (see the data note below), so the two
