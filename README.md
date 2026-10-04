@@ -15,8 +15,14 @@ something.
 
 | Implementation | Repo | Pinned version | Tracked branch |
 |----------------|------|----------------|----------------|
-| Ruby | [holidays/holidays](https://github.com/holidays/holidays) | `ruby/Gemfile` | `master` |
-| Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | `go/go.mod` | `main` |
+| Ruby | [holidays/holidays](https://github.com/holidays/holidays) | 11.7.0 (`ruby/Gemfile`) | `master` |
+| Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | v1.1.0 (`go/go.mod`) | `main` |
+| Data | [holidays/definitions](https://github.com/holidays/definitions) | v9.2.0 (`definitions/` submodule) | whatever go-holidays pins |
+
+The pinned versions are the ones `parity (pinned)` tests. Keep them in step:
+`definitions/` must be the commit the pinned go-holidays release pins, and the
+gem should be the release that ships the same definitions version. When you
+bump a pin, update this table too.
 
 ## Three checks
 
