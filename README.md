@@ -62,6 +62,18 @@ moment a release ships, or a commit lands, without a pin catching up.
 Both non-blocking checks also run nightly, to catch drift that lands in either
 repo while nothing here changes.
 
+To save runner time:
+
+- A new push to a PR cancels that PR's older, still-running checks. Runs on
+  `main` are never cancelled.
+- Changes that only touch docs (`*.md`, `LICENSE`, `.gitignore`) skip the two
+  non-blocking checks. The pinned check always runs.
+- When `latest release` resolves to exactly the pinned versions, the latest
+  check skips its comparison, since the pinned check already tests those
+  versions. It still runs on a manual dispatch, and on any change to the
+  latest-release scripts, `ruby/Gemfile.latest`, the `Makefile`, or its own
+  workflow.
+
 For `latest release` and `main`, `definitions/` is checked out at whatever
 commit that go-holidays version pins (see the data note below), so the two
 sides still resolve the same rules. `scripts/use-latest-release.sh` and

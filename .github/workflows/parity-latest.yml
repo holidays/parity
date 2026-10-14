@@ -8,16 +8,34 @@ name: "Parity: latest releases"
 # shipped that breaks parity, which needs a pin bump or a fix, but it must
 # never gate a PR. The nightly schedule catches a release landing while
 # nothing here changes.
+#
+# Docs-only changes cannot affect parity, so they skip this non-blocking
+# check. The pinned check has no filter: if it is a required status check, a
+# filtered-out run would leave the PR waiting forever.
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - LICENSE
+      - .gitignore
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - LICENSE
+      - .gitignore
   schedule:
     - cron: "30 6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to a PR supersedes its older runs, so cancel them. Runs on main
+# (push, nightly, manual) are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   versions:
@@ -30,16 +48,49 @@ jobs:
       ruby_ref: ${{ steps.resolve.outputs.ruby_ref }}
       defs: ${{ steps.resolve.outputs.defs }}
       defs_sha: ${{ steps.resolve.outputs.defs_sha }}
+      skip: ${{ steps.skip.outputs.skip }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history, so the skip step can diff against the base commit.
+          fetch-depth: 0
       - id: resolve
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/resolve-versions.sh latest
+      # When nothing has been released past the pins, latest is exactly the
+      # pinned versions, which the pinned workflow already tests, so skip the
+      # comparison. Still run it on a manual dispatch, or when this change
+      # touches the latest-release machinery itself (or the diff base is
+      # unknown), since only this workflow exercises that.
+      - id: skip
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          GO_REF: ${{ steps.resolve.outputs.go_ref }}
+          RUBY_REF: ${{ steps.resolve.outputs.ruby_ref }}
+          DEFS_SHA: ${{ steps.resolve.outputs.defs_sha }}
+        run: |
+          pinned="$(GITHUB_OUTPUT= scripts/resolve-versions.sh pinned | grep -E '^(go_ref|ruby_ref|defs_sha)=')"
+          latest="$(printf 'go_ref=%s\nruby_ref=%s\ndefs_sha=%s\n' "$GO_REF" "$RUBY_REF" "$DEFS_SHA")"
+          skip=false
+          if [ "$pinned" = "$latest" ] && [ "$EVENT" != workflow_dispatch ]; then
+            skip=true
+            if [ "$EVENT" != schedule ] && ! git diff --quiet "$BASE" HEAD -- \
+              scripts/use-latest-release.sh scripts/resolve-versions.sh \
+              ruby/Gemfile.latest Makefile .github/workflows/parity-latest.yml; then
+              skip=false
+            fi
+          fi
+          if [ "$skip" = true ]; then
+            echo "::notice title=Latest releases match the pins::Skipping the comparison: the pinned workflow already tests these exact versions."
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
   latest:
     name: "Latest releases (non-blocking): Go go-holidays ${{ needs.versions.outputs.go }} = Ruby holidays ${{ needs.versions.outputs.ruby }}, definitions ${{ needs.versions.outputs.defs }}"
     needs: versions
+    if: needs.versions.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -6,16 +6,34 @@ name: "Parity: unreleased main branches"
 # here means an upcoming release would break parity, which is worth knowing
 # before it ships, but it must never gate a PR. The nightly schedule catches
 # drift that lands in either repo while nothing here changes.
+#
+# Docs-only changes cannot affect parity, so they skip this non-blocking
+# check. The pinned check has no filter: if it is a required status check, a
+# filtered-out run would leave the PR waiting forever.
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - LICENSE
+      - .gitignore
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - LICENSE
+      - .gitignore
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to a PR supersedes its older runs, so cancel them. Runs on main
+# (push, nightly, manual) are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   versions:
