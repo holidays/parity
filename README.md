@@ -1,5 +1,10 @@
 # parity
 
+| Check | Status |
+|-------|--------|
+| `pinned` | <a href="https://github.com/holidays/parity/actions/workflows/parity-pinned.yml?query=branch%3Amain"><img alt="pinned" height="32" src="https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-pinned.yml?branch=main&label=parity"></a> |
+| `unreleased` | [![unreleased](https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-main.yml?branch=main&label=parity)](https://github.com/holidays/parity/actions/workflows/parity-main.yml?query=branch%3Amain) |
+
 Parity checks between the language implementations of the holidays project.
 
 Every implementation must return the same result for the same call. There is no
