@@ -2,8 +2,9 @@
 
 | Check | Status |
 |-------|--------|
-| `pinned` | <a href="https://github.com/holidays/parity/actions/workflows/parity-pinned.yml?query=branch%3Amain"><img alt="pinned" height="32" src="https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-pinned.yml?branch=main&label=parity"></a> |
-| `unreleased` | [![unreleased](https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-main.yml?branch=main&label=parity)](https://github.com/holidays/parity/actions/workflows/parity-main.yml?query=branch%3Amain) |
+| Pinned (blocking) | [![pinned](https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-pinned.yml?branch=main&event=push&label=pinned)](https://github.com/holidays/parity/actions/workflows/parity-pinned.yml?query=branch%3Amain+event%3Apush) |
+| Nightly: latest releases | [![latest](https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-latest.yml?branch=main&event=schedule&label=nightly%20latest)](https://github.com/holidays/parity/actions/workflows/parity-latest.yml?query=event%3Aschedule) |
+| Nightly: unreleased main | [![unreleased](https://img.shields.io/github/actions/workflow/status/holidays/parity/parity-main.yml?branch=main&event=schedule&label=nightly%20unreleased)](https://github.com/holidays/parity/actions/workflows/parity-main.yml?query=event%3Aschedule) |
 
 Parity checks between the language implementations of the holidays project.
 
