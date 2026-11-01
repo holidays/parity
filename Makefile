@@ -9,7 +9,7 @@ GO ?= go
 # -count=1 is required: go test caches a passing result keyed only on Go inputs,
 # but this suite's outcome also depends on the gem, its pin, and definitions/,
 # which the cache cannot see, so a cached run can report a stale green.
-# See README.md for the design and prerequisites.
+# See README.md for prerequisites.
 parity:
 	@ls definitions/*.yaml >/dev/null 2>&1 || { \
 		echo "error: definitions/ submodule is empty; the oracle would load no region YAML and every region would mismatch." >&2; \
