@@ -42,101 +42,26 @@ tip`.
 | `Latest releases (non-blocking): Go go-holidays <v> = Ruby holidays <v>, definitions <v>` | the newest published release of go-holidays and of the gem, resolved fresh each run | No. Never make it required. A red run means a release has already shipped that breaks parity: the pin needs bumping, or the new release needs fixing. |
 | `Unreleased (non-blocking): Go go-holidays main@<sha> = Ruby holidays master@<sha>, definitions <v>` | tip of go-holidays `main` and the gem's `master` | No. Never make it required. A red run is an early warning that unreleased work would break parity before it ever ships. |
 
-Each job name spells out exactly which versions it compared, and `=` means the
-two gave identical output for every call in the suite. A first `Resolve
-versions` job in each workflow works the versions out with
-`scripts/resolve-versions.sh`, and the comparison job then tests exactly those
-versions, so the name can never claim something the run did not test. Because
-the pinned job's name includes the versions, a branch-protection rule that
-requires it has to be updated whenever a pin is bumped.
+Each job name lists the exact versions it tested (worked out first by
+`scripts/resolve-versions.sh`), and `=` means every call gave identical output.
+A red job means the implementations disagree, and its log lists every
+difference.
 
-The comparison has no separate pass or fail per language: neither
-implementation is the reference, so a red job means Go and Ruby disagree, and
-the job log lists every difference.
+The checks can coincide (nothing released past the pin, or nothing on `main`
+past the latest tag), but they answer different questions and diverge as soon
+as a release ships or a commit lands. Both non-blocking checks also run
+nightly. A failing nightly opens (or comments on) an issue assigned to ppeble,
+so GitHub emails them, and the next passing nightly closes it (see
+`scripts/nightly-alert.sh`).
 
-`pinned` and `latest release` can coincide (nothing has shipped past the pin
-yet), and `latest release` and `main` can coincide (the default branch has no
-commits past its latest tag). Don't read a repeat result across checks as the
-checks being redundant: they answer different questions and will diverge the
-moment a release ships, or a commit lands, without a pin catching up.
+To save runner time, a new push to a PR cancels its older runs, docs-only
+changes skip the non-blocking checks, and the latest check skips its comparison
+when the latest releases are exactly the pins.
 
-Both non-blocking checks also run nightly, to catch drift that lands in either
-repo while nothing here changes.
-
-A failing nightly run opens an issue titled `Nightly parity failing: <check>`,
-assigned to @ppeble so GitHub emails them. Further failures comment on that
-issue, and the next passing nightly closes it. The logic is in
-`scripts/nightly-alert.sh`.
-
-To save runner time:
-
-- A new push to a PR cancels that PR's older, still-running checks. Runs on
-  `main` are never cancelled.
-- Changes that only touch docs (`*.md`, `LICENSE`, `.gitignore`) skip the two
-  non-blocking checks. The pinned check always runs.
-- When `latest release` resolves to exactly the pinned versions, the latest
-  check skips its comparison, since the pinned check already tests those
-  versions. It still runs on a manual dispatch, and on any change to the
-  latest-release scripts, `ruby/Gemfile.latest`, the `Makefile`, or its own
-  workflow.
-
-For `latest release` and `main`, `definitions/` is checked out at whatever
-commit that go-holidays version pins (see the data note below), so the two
-sides still resolve the same rules. `scripts/use-latest-release.sh` and
-`scripts/use-main.sh` do the switching. Bumping a pin (go-holidays in
-`go/go.mod`, the gem in `ruby/Gemfile`, or `definitions/`) is how a new release
-becomes the blocking baseline.
-
-## Layout
-
-```
-definitions/   git submodule: holidays/definitions, the shared region YAML
-ruby/          the Ruby oracle (oracle.rb) and its pinned gem (Gemfile)
-go/            the Go harness: corpus, exhaustive sweep, oracle client
-```
-
-## Design: apples-to-apples
-
-Comparing two engines fairly means separating CODE from DATA. The gem carries
-its own bundled data set, which we do not want to depend on:
-
-- **CODE** is each implementation's real resolution logic: the installed gem,
-  and the go-holidays module.
-- **DATA** is the `definitions/` submodule YAML, loaded into the running gem on
-  startup via `Holidays.load_custom`, and compiled into go-holidays at its
-  release. The comparison never rides on whatever data the gem happens to bundle.
-
-Both sides then resolve the same holiday rules, so any difference in output is a
-real behavioural difference between the engines, not a difference in the data.
-
-**The `definitions/` pin must match the definitions version the pinned
-go-holidays release was generated from** (go-holidays pins the same submodule).
-If they drift apart, the mismatches are data mismatches, not engine ones. When
-bumping go-holidays in `go/go.mod`, bump `definitions/` to the commit
-go-holidays pins.
-
-## How it works
-
-```
-go/ (Go harness)  --NDJSON request-->  ruby/oracle.rb  (pinned gem + our region YAML)
-                  <--NDJSON result--
-```
-
-- "Oracle" is only the name of the process that exposes the Ruby gem to the
-  harness. It carries no authority over the Go port's results.
-- `ruby/oracle.rb` runs the gem, loads the region YAML, and answers one
-  line-delimited JSON (NDJSON) request per line on stdin, one response per line
-  on stdout (see its RUN CONTRACT header).
-- `go/oracle_client.go` starts the oracle as a subprocess and speaks that
-  contract.
-- `go/parity_test.go` runs a curated corpus through both the Go API and the
-  oracle and diffs the results. Each case runs under all four flag combinations:
-  plain, observed, informal, informal+observed.
-- `go/sweep_parity_test.go` is the exhaustive sweep: every region, every year
-  1970-2050, all four flag combinations.
-- `ruby/oracle_smoke.sh` is a standalone smoke check of the oracle.
-- `ruby/verify_between_equiv.rb` is a manual one-off check for the oracle's
-  `year_holidays_range` fast path. Nothing runs it automatically.
+For `latest release` and `main`, `definitions/` is checked out at the commit
+that go-holidays version pins, via `scripts/use-latest-release.sh` and
+`scripts/use-main.sh`. Bumping a pin in `go/go.mod`, `ruby/Gemfile`, or
+`definitions/` makes a new release the blocking baseline.
 
 ## Running
 
@@ -160,27 +85,3 @@ need an authenticated `gh`.
 
 `make smoke` runs only the Ruby oracle smoke check, and `make vet` vets the Go
 harness.
-
-## Scope
-
-The eight result-producing public functions are compared:
-
-| Ruby gem | Go port |
-|----------|---------|
-| `on` | `On` |
-| `between` | `Between` |
-| `cache_between` | `CacheBetween` |
-| `next_holidays` | `NextHolidays` |
-| `year_holidays` | `YearHolidaysFrom` |
-| `any_holidays_during_work_week?` | `AnyHolidaysDuringWorkWeek` |
-| `available_regions` | `AvailableRegions` |
-| `load_custom` | `LoadCustom` |
-
-`year_holidays` is compared against `YearHolidaysFrom(from, opts)` (the from-date
-variant that matches the gem's semantics), not `YearHolidays(year)`.
-
-### `load_all` is not compared (N/A)
-
-The gem's `load_all` eagerly loads every region at runtime. The Go port already
-loads all regions eagerly via `init()` side effects, so `load_all` would be a
-no-op with nothing to compare.
