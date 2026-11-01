@@ -9,10 +9,10 @@
 Parity checks between the language implementations of the holidays project.
 
 Every implementation must return the same result for the same call. There is no
-scenario where two languages are allowed to differ, so any mismatch reported
+scenario where any projects are allowed to differ, so any mismatch reported
 here is a bug, never an accepted divergence. No implementation is the
-reference: when two disagree, the difference is reported as a difference, and
-which side is wrong is decided case by case. Every difference must be stated in
+reference: when projects disagree, the difference is reported as a
+difference, and which one is wrong is decided case by case. Every difference must be stated in
 the results. Nothing is skipped, allowlisted, or explained away silently.
 
 This repo is deliberately separate from the implementations. Its checks never
