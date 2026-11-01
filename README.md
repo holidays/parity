@@ -63,6 +63,11 @@ moment a release ships, or a commit lands, without a pin catching up.
 Both non-blocking checks also run nightly, to catch drift that lands in either
 repo while nothing here changes.
 
+A failing nightly run opens an issue titled `Nightly parity failing: <check>`,
+assigned to @ppeble so GitHub emails them. Further failures comment on that
+issue, and the next passing nightly closes it. The logic is in
+`scripts/nightly-alert.sh`.
+
 To save runner time:
 
 - A new push to a PR cancels that PR's older, still-running checks. Runs on

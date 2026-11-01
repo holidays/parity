@@ -86,3 +86,33 @@ jobs:
           echo "::warning title=Parity against main::go-holidays main and
           holidays master disagree. Not blocking. See the compare step for the
           mismatches and the versions tested."
+
+  # A nightly failure opens (or comments on) an issue assigned to
+  # ALERT_ASSIGNEE, which is what gets a person emailed; the next passing
+  # nightly closes it. Only scheduled runs report here: PR, push, and manual
+  # runs already notify whoever triggered them.
+  alert:
+    name: Report nightly result
+    needs: [versions, main]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Open, comment on, or close the alert issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALERT_TITLE: "Nightly parity failing: unreleased main branches"
+          ALERT_ASSIGNEE: ppeble
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          VERSIONS: "Go go-holidays ${{ needs.versions.outputs.go }}, Ruby holidays ${{ needs.versions.outputs.ruby }}, definitions ${{ needs.versions.outputs.defs }}"
+          VERSIONS_RESULT: ${{ needs.versions.result }}
+          COMPARE_RESULT: ${{ needs.main.result }}
+        run: |
+          if [ "$VERSIONS_RESULT" = failure ] || [ "$COMPARE_RESULT" = failure ]; then
+            scripts/nightly-alert.sh failure
+          elif [ "$COMPARE_RESULT" = success ]; then
+            scripts/nightly-alert.sh success
+          fi
