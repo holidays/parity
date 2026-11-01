@@ -21,9 +21,9 @@ something.
 
 | Implementation | Repo | Pinned version | Tracked branch |
 |----------------|------|----------------|----------------|
-| Ruby | [holidays/holidays](https://github.com/holidays/holidays) | 11.7.0 (`ruby/Gemfile`) | `master` |
-| Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | v1.1.0 (`go/go.mod`) | `main` |
-| Data | [holidays/definitions](https://github.com/holidays/definitions) | v9.2.0 (`definitions/` submodule) | whatever go-holidays pins |
+| Ruby | [holidays/holidays](https://github.com/holidays/holidays) | 11.8.0 (`ruby/Gemfile`) | `master` |
+| Go | [holidays/go-holidays](https://github.com/holidays/go-holidays) | v1.2.0 (`go/go.mod`) | `main` |
+| Data | [holidays/definitions](https://github.com/holidays/definitions) | v9.3.0 (`definitions/` submodule) | whatever go-holidays pins |
 
 The pinned versions are the ones the blocking `Pinned` job tests. Keep them in
 step: `definitions/` must be the commit the pinned go-holidays release pins,
